@@ -1,0 +1,199 @@
+#!/usr/bin/env bash
+# Version: 0.5
+#set -x
+
+DATE="$(date)"
+FILE=$1
+ERG="$(basename $FILE)"
+TRACE=0
+
+
+usage="$0 LogFile"
+if [ $# -gt 1 -o $# -eq 0 ]
+then
+   echo "Falsche Anzahl von Parametern"
+   echo "$usage"
+   exit 1
+fi
+
+if [ ! -e $1 ]
+then
+   echo "-- LogFile: $1 don't exists !"
+   exit 1
+fi
+
+### Datenstand ermitteln ###
+STAND="$(ls -l $FILE | awk '{print $8}')"
+
+### Cleaning Logfile ###
+sed 's/[^0-9A-Za-z/\+,(){}_.:= |~-]//g'  $FILE > $TEMP/clean.txt
+egrep -v '(\.\.\. [0-9]* more| *at )' $TEMP/clean.txt > $FILE
+
+### Probe ob Logdatei ein Tracelog ist. wenn ja dann die Levels anpassen ###
+if [[ $TYPE == "trace" ]] || [[ $TYPE == "Trace" ]] || [[ $TYPE == "TRACE" ]]
+then
+   TRACE=1
+   sed 's/|ERROR|/ ERROR /' $FILE > $TEMP/wrang.txt
+   sed 's/|WARNING|/ WARNING /' $TEMP/wrang.txt > $TEMP/wrang1.txt
+   sed 's/|WARN|/ WARN /' $TEMP/wrang1.txt > $TEMP/wrang.txt
+   sed 's/|SEVERE|/ SEVERE /' $TEMP/wrang.txt > $TEMP/wrang1.txt
+   sed 's/|INFO|/ INFO /' $TEMP/wrang1.txt > $TEMP/wrang.txt
+   sed 's/|FATAL|/ FATAL /' $TEMP/wrang.txt > $TEMP/wrang1.txt
+   sed 's/|TRACE|/ TRACE /' $TEMP/wrang1.txt > $TEMP/wrang.txt
+   sed 's/|DEBUG|/ DEBUG /' $TEMP/wrang.txt > $FILE
+fi
+
+### Wrangling Logfile ###
+awk '/ ERROR / {print "\n"}1' $FILE > $TEMP/clean1.txt
+awk '/ WARNING / {print "\n"}1' $TEMP/clean1.txt  > $TEMP/clean.txt
+awk '/ WARN / {print "\n"}1' $TEMP/clean.txt > $TEMP/clean1.txt
+awk '/ SEVERE / {print "\n"}1' $TEMP/clean1.txt  > $TEMP/clean.txt
+awk '/ INFO / {print "\n"}1' $TEMP/clean.txt > $TEMP/clean1.txt
+awk '/ FATAL / {print "\n"}1' $TEMP/clean1.txt  > $TEMP/clean.txt
+awk '/ TRACE / {print "\n"}1' $TEMP/clean.txt > $TEMP/clean1.txt
+
+cp $TEMP/clean1.txt $TEMP/clean.txt
+
+### Copy clean Logfile for Stats ###
+cp $TEMP/clean.txt ${STATS}/${DATEI}
+
+### Generating Level-Counts ###
+ERROR_COUNT="$(egrep " ERROR " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+WARNING_COUNT="$(egrep " WARNING " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+WARN_COUNT="$(egrep " WARN " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+SEVERE_COUNT="$(egrep " SEVERE " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+INFO_COUNT="$(egrep " INFO " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+FATAL_COUNT="$(egrep " FATAL " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+TRACE_COUNT="$(egrep " TRACE " $TEMP/clean.txt | wc -l | awk '{print $1}')"
+
+### Colours for Levels ###
+ERROR_COL="#FF8000"
+WARNING_COL="#FF8000"
+WARN_COL="#FFFF00"
+SEVERE_COL="#FF8000"
+INFO_COL="#0080FF"
+FATAL_COL="red"
+TRACE_COL="#01DF01"
+
+
+### Deleting Columns if set it up with DEL_COLUMN in ConfigFile ###
+#if [[ $DEL_COLUMN == \$[1-9]?([0-9]) ]]
+#then
+#  awk '{gsub(".*","",'$DEL_COLUMN'); print $0}' $TEMP/clean.txt > $TEMP/clean1.txt
+#  cp $TEMP/clean1.txt $TEMP/clean.txt
+#fi
+
+function generate_stats {
+### Generate Stats and HTML Head, Body etc... ###
+cat $ROOT_DIR/head1 > $TEMP/${LEVEL}_${ERG}.htm
+printf "\n<h4>====== Textanalysis for "$ERG" ======</h4>\n<pre>\n" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "Processed at: $DATE, Data-Status from $STAND" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "" >> $TEMP/${LEVEL}_${ERG}.htm
+
+echo "<form name='form'>" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "<select name='link' SIZE='1' onChange='window.location.href = document.form.link.options[document.form.link.selectedIndex].value;'>" >> $TEMP/${LEVEL}_${ERG}.htm
+
+if [[ $TRACE == "0" ]]
+then
+echo "<option value=""$WWW_OUTDIR/ERROR_server.log.htm""> server.log </option>" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "<option value=""$WWW_OUTDIR/ERROR_trace.log.htm""> trace.log </option>" >> $TEMP/${LEVEL}_${ERG}.htm
+else
+echo "<option value=""$WWW_OUTDIR/ERROR_trace.log.htm""> trace.log </option>" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "<option value=""$WWW_OUTDIR/ERROR_server.log.htm""> server.log </option>" >> $TEMP/${LEVEL}_${ERG}.htm
+fi
+echo "</select>" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "</form>" >> $TEMP/${LEVEL}_${ERG}.htm
+
+echo "Stats for JBoss Log_Levels:" >> $TEMP/${LEVEL}_${ERG}.htm
+for i in ERROR WARNING WARN SEVERE INFO FATAL TRACE
+do
+  level="$(egrep ' '$i' ' $TEMP/clean.txt | wc -l | awk '{print $1}')"
+  echo "<a href="${i}_${TYPE}.${TYPE1}.htm"> $i </a> : $level" >> $TEMP/${LEVEL}_${ERG}.htm
+done
+echo "" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "<a href="../"> Back to File Listing </a>" >> $TEMP/${LEVEL}_${ERG}.htm
+
+if [[ $COUNT != "0" ]]
+then
+  read_lines
+else
+  printf "</pre><br /><br /><h4>" >> $TEMP/${LEVEL}_${ERG}.htm
+  echo "==== Strings with Log-Level: "${LEVEL}" ====" >> $TEMP/${LEVEL}_${ERG}.htm
+  printf "</h4><pre>" >> $TEMP/${LEVEL}_${ERG}.htm
+  printf "\n</pre>\n</body>\n</html>" >> $TEMP/${LEVEL}_${ERG}.htm
+  cp $TEMP/${LEVEL}_${ERG}.htm $TEMP/${LEVEL}.log
+  sed 's/ '$LEVEL' / <span style=\"color: '$COLOR'\"> -- '$LEVEL' -- <\/span> /' $TEMP/${LEVEL}.log > $OUT_DIR/${LEVEL}_${TYPE}.${TYPE1}.htm
+fi
+}
+
+
+function read_lines {
+LINES=500
+typeset -i LINE_COUNT
+LINE_COUNT=0
+printf "</pre><br /><br /><h4>" >> $TEMP/${LEVEL}_${ERG}.htm
+echo "==== Strings with Log-Level: "${LEVEL}" ====" >> $TEMP/${LEVEL}_${ERG}.htm
+printf "</h4><pre>" >> $TEMP/${LEVEL}_${ERG}.htm
+#sed -n '/ '$LEVEL' /,/^$/p' $TEMP/clean.txt >> $TEMP/${LEVEL}_${ERG}.htm
+if [[ $LEVEL == "INFO" ]] || [[ $LEVEL == "WARN" ]]
+then
+   egrep " $LEVEL " $TEMP/clean.txt > $TEMP/check.lines.log
+   LINE_COUNT="$(wc -l $TEMP/check.lines.log | awk '{print $1}')"
+fi
+
+if (( $LINE_COUNT > $LINES ))
+then
+   echo "<h4>Please check the Application, $LINE_COUNT ${LEVEL}-Lines wasting your logfile....output truncated at 300 Lines !</h4>" >> $TEMP/${LEVEL}_${ERG}.htm
+   echo "<br />" >> $TEMP/${LEVEL}_${ERG}.htm
+   sed -n '/ '$LEVEL' /,/^$/p' $TEMP/clean.txt | sed 300q >> $TEMP/${LEVEL}_${ERG}.htm
+else
+   sed -n '/ '$LEVEL' /,/^$/p' $TEMP/clean.txt >> $TEMP/${LEVEL}_${ERG}.htm
+fi
+printf "\n</pre>\n</body>\n</html>" >> $TEMP/${LEVEL}_${ERG}.htm
+cp $TEMP/${LEVEL}_${ERG}.htm $TEMP/${LEVEL}.log
+sed 's/ '$LEVEL' / <span style=\"color: '$COLOR'\"> -- '$LEVEL' -- <\/span> /' $TEMP/${LEVEL}.log > $OUT_DIR/${LEVEL}_${TYPE}.${TYPE1}.htm
+}
+
+LEVEL=FATAL
+COUNT=$FATAL_COUNT
+COLOR=$FATAL_COL
+generate_stats
+
+LEVEL=ERROR
+COUNT=$ERROR_COUNT
+COLOR=$ERROR_COL
+generate_stats
+
+LEVEL=WARNING
+COUNT=$WARNING_COUNT
+COLOR=$WARNING_COL
+generate_stats
+
+LEVEL=SEVERE
+COUNT=$SEVERE_COUNT
+COLOR=$SEVERE_COL
+generate_stats
+
+LEVEL=WARN
+COUNT=$WARN_COUNT
+COLOR=$WARN_COL
+generate_stats
+
+LEVEL=INFO
+COUNT=$INFO_COUNT
+COLOR=$INFO_COL
+generate_stats
+
+LEVEL=TRACE
+COUNT=$TRACE_COUNT
+COLOR=$TRACE_COL
+generate_stats
+
+cp $OUT_DIR/ERROR_server.log.htm $OUT_DIR/index.htm
+
+#======================Housekeeping====================#
+rm -f $TEMP/clean*.txt
+rm -f $TEMP/*.htm
+rm -f $TEMP/*.log
+
+exit 0
