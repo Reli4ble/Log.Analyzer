@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Version: 0.5
+
+CONFIG="/home/mhornick/Data_Analysis.scripts/jboss/Log_Analyzer.config.dat"
+
+SOURCE="$(grep SOURCE $CONFIG | awk -F= '{print $2}')"
+WWWDIR="$(grep WWWDIR $CONFIG | awk -F= '{print $2}')"
+WEBDIR="$(grep WEBDIR $CONFIG | awk -F= '{print $2}')"
+ROOT_DIR="$(grep ROOT_DIR $CONFIG | awk -F= '{print $2}')"
+TEMP="$(grep TEMP $CONFIG | awk -F= '{print $2}')"
+STATS="$(grep STATS $CONFIG | awk -F= '{print $2}')"
+
+### Make TEMP and STATS-Directorys if needed ###
+mkdir -p $TEMP
+mkdir -p $STATS
+
+gzip -q $SOURCE/*
+
+for i in `ls $SOURCE`
+do
+  TYPE="$(echo $i | awk -F. '{print $7}')"
+  TYPE1="$(echo $i | awk -F. '{print $8}')"
+  VERFAHREN="$(echo $i | awk -F. '{print $6}')"
+  UMGEBUNG="$(echo $i | awk -F. '{print $4}')"
+  MONAT="$(echo $i | awk -F. '{print $2}')"
+  TAG="$(echo $i | awk -F. '{print $1}')"
+  HOST="$(echo $i | awk -F. '{print $5}')"
+  OUT_DIR="$WEBDIR/$UMGEBUNG/$VERFAHREN/$MONAT/$TAG/$HOST"
+  WWW_OUTDIR="$WWWDIR/$UMGEBUNG/$VERFAHREN/$MONAT/$TAG/$HOST"
+
+  mkdir -p $OUT_DIR
+  mkdir -p $WEBDIR/$UMGEBUNG/$VERFAHREN/$MONAT/$TAG/orig_log
+  cp $SOURCE/$i $WEBDIR/$UMGEBUNG/$VERFAHREN/$MONAT/$TAG/orig_log
+
+  TEST=`echo $i | awk -F. '{print $NF}'`
+  if [[ $TEST == "gz" ]]
+  then
+    gunzip -f $SOURCE/$i
+  fi
+
+  DATEI="$(echo $i | cut -d\. -f1-8)"
+  # Variablen fuer den JBoss_Log_Analyzer exportieren
+  export OUT_DIR
+  export WWW_OUTDIR
+  export TYPE
+  export TYPE1
+  export ROOT_DIR
+  export TEMP
+  export STATS
+  export DATEI
+
+
+
+  $ROOT_DIR/JBoss_Log_Analyzer $SOURCE/$DATEI
+done
+
+#================Housekeeping================#
+rm -rf $SOURCE/*
+
+
+exit 0
