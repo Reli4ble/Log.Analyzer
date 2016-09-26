@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style type="text/css">
+<!--
+body {
+background-color: #333333;
+color: #FFFFFF;
+font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+a:link {
+color: #ffffff;
+}
+a:hover {
+color: #00ccff;
+}
+a:visited {
+color: #ffffff;
+}
+a:active {
+color: #ff0000;
+}
+-->
+</style>
+</head>
+<body>
