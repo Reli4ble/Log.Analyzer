@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Version: 0.5
+#set -x
+
+CONFIG="/home/mhornick/Data_Analysis.scripts/jboss/Log_Analyzer.config.dat"
+
+STATS="$(grep STATS $CONFIG | awk -F= '{print $2}')"
+WEBDIR="$(grep WEBDIR $CONFIG | awk -F= '{print $2}')"
+typeset -i MINUTE
+typeset -i COUNT
+typeset -i ERROR_SERVER
+typeset -i ERROR_TRACE
+typeset -i GESAMT
+typeset -i ZAEHLER
+typeset -i i
+
+
+function read_logs {
+for var in `echo "${arr[@]}"`
+do
+
+ for HOUR in 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+ do
+  MINUTE=0
+  COUNT=0
+  until (( $MINUTE > 5 ))
+  do
+   ERROR_SERVER="$(grep ERROR $var | egrep "$HOUR:$MINUTE[0-9]:[0-5][0-9]" | wc -l)"
+#   echo "${HOUR}:${MINUTE}0" >> ${STATS}/times
+   echo "${ERROR_SERVER}" >> ${STATS}/${var}.stats
+   ((MINUTE++))
+   ((COUNT++))
+  done
+ done
+done
+}
+
+function plot {
+gnuplot << DATA
+set terminal png transparent nocrop enhanced size 1900,1000 font "arial,8"
+set output '${WEBDIR}/${OUTPUT}/charts/${HOST}.png'
+set style data histogram
+set style fill solid 0.80 border
+set xdata time
+set xrange [00:*]
+#set xtics 1
+set timefmt "%H:%M"
+set format x "%H:%M"
+set title "ERRORS"
+set yrange [0:30]
+set grid
+set size 1, 0.5
+set origin 0.0, 0.5
+plot "$FILE" using 1:2 with boxes ti "ERRORS server.log" linecolor rgb "#FF8000", "$FILE" using 1:3 with impulses ti "ERRORS trace.log" linecolor rgb "#0066ff" lw 2, "$FILE" using 1:4 with lines ti "ERRORS Gesamt" linecolor rgb "#ff0000"
+DATA
+}
+
+cd $STATS
+arr=( *server.log )
+read_logs
+
+arr=( *trace.log )
+read_logs
+
+arr_server=( *server.log.stats )
+arr_trace=( *trace.log.stats )
+
+
+i=0
+ZAEHLER="$(echo ${#arr_server[@]})"
+until (( $i == $ZAEHLER ))
+do
+   STATS_FILE="$(echo "${arr_server[$i]}" | cut -d\. -f1-6)"
+
+   ### Gesamt berechnen ###
+   declare -a gesamt
+   declare -a gesamtserver
+   declare -a gesamttrace
+   readarray -t gesamtserver < ${arr_server[$i]}
+   readarray -t gesamttrace < ${arr_trace[$i]}
+   let plus=0
+   while (( ${#gesamtserver[@]} > plus )); do
+   ((gesamt[plus]=gesamtserver[plus]+gesamttrace[plus]))
+   echo "${gesamt[plus++]}" >> ${STATS}/${STATS_FILE}.gesamt
+   done
+
+   paste times ${arr_server[$i]} ${arr_trace[$i]} ${STATS}/${STATS_FILE}.gesamt >> ${STATS}/${STATS_FILE}.final
+   FILE=${STATS}/${STATS_FILE}.final
+   OUTPUT="$(echo $STATS_FILE | awk -F. '{print $4"/"$6"/"$2"/"$1}')"
+   HOST="$(echo $STATS_FILE | awk -F. '{print $5}')"
+   mkdir -p ${WEBDIR}/${OUTPUT}/charts
+   echo "${WEBDIR}/${OUTPUT}/charts"
+   plot
+   ((i++))
+done
+
+
+#+========== Housekeeping ==========+
+rm -f ${STATS}/*stats
+rm -f ${STATS}/*final
+rm -f ${STATS}/*gesamt
+rm -f ${STATS}/*server.log
+rm -f ${STATS}/*trace.log
+
+exit 0
