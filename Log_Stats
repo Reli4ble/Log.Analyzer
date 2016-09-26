@@ -47,7 +47,7 @@ set xrange [00:*]
 set timefmt "%H:%M"
 set format x "%H:%M"
 set title "ERRORS"
-set yrange [0:30]
+set yrange [0:100]
 set grid
 set size 1, 0.5
 set origin 0.0, 0.5
