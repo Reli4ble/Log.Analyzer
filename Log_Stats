@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version: 0.5
+# Version: 0.4
 #set -x
 
 CONFIG="/home/mhornick/Data_Analysis.scripts/jboss/Log_Analyzer.config.dat"
