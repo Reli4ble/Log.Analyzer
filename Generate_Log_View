@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version: 0.5
+# Version: 0.4
 
 CONFIG="/home/mhornick/Data_Analysis.scripts/jboss/Log_Analyzer.config.dat"
 
@@ -9,6 +9,7 @@ WEBDIR="$(grep WEBDIR $CONFIG | awk -F= '{print $2}')"
 ROOT_DIR="$(grep ROOT_DIR $CONFIG | awk -F= '{print $2}')"
 TEMP="$(grep TEMP $CONFIG | awk -F= '{print $2}')"
 STATS="$(grep STATS $CONFIG | awk -F= '{print $2}')"
+VERSION="$(head ${ROOT_DIR}/version.txt)"
 
 ### Make TEMP and STATS-Directorys if needed ###
 mkdir -p $TEMP
@@ -48,6 +49,7 @@ do
   export TEMP
   export STATS
   export DATEI
+  export VERSION
 
 
 
