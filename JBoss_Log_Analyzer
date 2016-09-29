@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version: 0.5
+# Version: 0.4
 #set -x
 
 DATE="$(date)"
@@ -86,6 +86,7 @@ TRACE_COL="#01DF01"
 function generate_stats {
 ### Generate Stats and HTML Head, Body etc... ###
 cat $ROOT_DIR/head1 > $TEMP/${LEVEL}_${ERG}.htm
+printf "<h6>$VERSION</h6>\n" >> $TEMP/${LEVEL}_${ERG}.htm
 printf "\n<h4>====== Textanalysis for "$ERG" ======</h4>\n<pre>\n" >> $TEMP/${LEVEL}_${ERG}.htm
 echo "Processed at: $DATE, Data-Status from $STAND" >> $TEMP/${LEVEL}_${ERG}.htm
 echo "" >> $TEMP/${LEVEL}_${ERG}.htm
