@@ -20,7 +20,9 @@ color: #ffffff;
 a:active {
 color: #ff0000;
 }
--->
+h6 {
+text-align: right;
+}
 </style>
 </head>
 <body>
