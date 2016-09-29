@@ -1,0 +1,9 @@
+### config.dat for Log_Analyzer ###
+# Version: 0.4
+
+SOURCE=/home/mhornick/Data_Analysis/logs/jboss
+WWWDIR=http://duisparc02.bku-web.db.de/Log4j
+WEBDIR=/home/mhornick/www/html/Log4j
+ROOT_DIR=/home/mhornick/Data_Analysis.scripts/jboss
+TEMP=/home/mhornick/Data_Analysis.scripts/jboss/tmp
+STATS=/home/mhornick/Data_Analysis.scripts/jboss/stats
